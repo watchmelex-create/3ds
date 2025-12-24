@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+<meta charset="UTF-8">
+<title>3D Fossil Viewer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background: black;
+    overflow: hidden;
+    font-family: Arial, sans-serif;
+    color: white;
+}
+
+iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+/* الأسهم */
+.nav {
+    position: fixed;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 50px;
+    padding: 10px 20px;
+    cursor: pointer;
+    background: rgba(0,0,0,0.6);
+    z-index: 10;
+    user-select: none;
+}
+#prev { left: 15px; }
+#next { right: 15px; }
+.nav:hover { background: rgba(0,0,0,0.85); }
+
+/* صندوق المعلومات */
+.info-box {
+    position: fixed;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.65);
+    padding: 10px 20px;
+    border-radius: 8px;
+    max-width: 90%;
+    text-align: center;
+    z-index: 10;
+}
+.info-box h2 {
+    margin: 0;
+    font-size: 18px;
+}
+.info-box p {
+    margin: 6px 0 0;
+    font-size: 14px;
+}
+</style>
+</head>
+
+<body>
+
+<div id="prev" class="nav">&#10094;</div>
+<div id="next" class="nav">&#10095;</div>
+
+<iframe id="viewer"></iframe>
+
+<div class="info-box">
+    <h2 id="modelName"></h2>
+    <p id="modelDesc"></p>
+</div>
+
+<script>
+const models = [
+    {
+        src: "https://sketchfab.com/models/e8aa62beccbe4916a666c1da07080327/embed?ui_controls=0&ui_infos=0&ui_stop=0",
+        name: "Ivory",
+        desc: "Fossil tusk of the extinct elephant Elephas cf. recki from the Nafud Formation, dating to the Pleistocene. This specimen was discovered in northern Saudi Arabia and records the presence of large elephants in ancient humid environments of the Arabian Peninsula."
+    },
+    {
+        src: "https://sketchfab.com/models/89d219340c824b1b82abad99bc4dda95/embed?ui_controls=0&ui_infos=0&ui_stop=0",
+        name: "Tree Remains",
+        desc: "Fossilized tree trunks dating back to the Cretaceous period, with the details of their fibers and woody structure preserved within the rocks. These fossils were discovered in the Wasia Formation in the Riyadh area in central Saudi Arabia. These plant remains indicate that the region once supported dense vegetation and relatively humid environments during the late Cretaceous."
+    },
+    {
+        src: "https://sketchfab.com/models/d3fe32e68a444f7dad21a042db2d9733/embed?ui_controls=0&ui_infos=0&ui_stop=0",
+        name: "Cretaceous Rudist",
+        desc: "Fossil shell of a rudist (an extinct marine mollusk) about 70 million years old from the Late Cretaceous. This specimen was found in the marine carbonate rocks of the Aruma Formation in the Al-Kharj area, south of Riyadh in central Saudi Arabia. The fossil provides evidence for the presence of warm, shallow marine environments that once covered parts of central Arabia during the Late Cretaceous."
+    },
+    {
+        src: "https://sketchfab.com/models/8ce733925c664646b565eacca0c2734d/embed?ui_controls=0&ui_infos=0&ui_stop=0",
+        name: "Prototaxites",
+        desc: "These fossils from the Jawbah Formation in the Al‑Jouf area of northern Saudi Arabia record the tissue structure of this huge organism, which may have reached several meters in height. They are among the earliest evidence of primitive land vegetation‑like life that spread across the Arabian Peninsula during deep geological time."
+    },
+    {
+        src: "https://sketchfab.com/models/1469f593ec434063863b61058022cef7/embed?ui_controls=0&ui_infos=0&ui_stop=0",
+        name: "Orthoceras",
+        desc: "These are marine cephalopods with straight shells that date back to the Silurian period. The specimens were discovered in the Sharawa Formation in the Tabuk area of northwestern Saudi Arabia. These fossils provide evidence for ancient marine environments that once covered parts of northwestern Arabia during early geological ages."
+    },
+    {
+        src: "https://sketchfab.com/models/4712c7edff694c1cb1d7d46346bbbdfd/embed?ui_controls=0&ui_infos=0&ui_stop=0",
+        name: "Crocodile vertebrae",
+        desc: "A fossilized part of crocodile vertebrae dating to the Late Cretaceous, found in the Adafa Formation in the Tabuk area of northwestern Saudi Arabia. These vertebrae display the strong structure of the crocodile’s backbone, which supported its movement in ancient aquatic and terrestrial environments. This fossil is evidence for the wide distribution of crocodiles in northwestern Arabia during the Late Cretaceous."
+    },
+    {
+        src: "https://sketchfab.com/models/b2399ca6fd7b457b9ac6fd85cc0b65cd/embed?ui_controls=0&ui_infos=0&ui_stop=0",
+        name: "Equidae",
+        desc: "A fossilized lower jaw from an equid showing a clearly preserved row of teeth. This fossil belongs to an odd‑toed ungulate mammal and was discovered in one of the quarries of the As‑Saudah area. The specimen helps in studying the evolution of ancient horses and the environments they inhabited in the Arabian Peninsula."
+    },
+    {
+        src: "https://sketchfab.com/models/bb119b820d234b6bb11ad28025195f48/embed?ui_controls=0&ui_infos=0&ui_stop=0",
+        name: "Turtle Shell",
+        desc: "A fossilized fragment of a turtle shell dating to the Late Oligocene, discovered in the Shumaysi Formation in the Makkah region. This piece preserves part of the turtle’s external carapace that remained trapped in sedimentary rocks for millions of years. The fossil indicates the presence of ancient aquatic or semi‑aquatic environments in Al‑Hijaz that supported turtles during past geological ages."
+    },
+    {
+        src: "https://sketchfab.com/models/a5be795732e44cb3821bcdf5f57224e0/embed?ui_controls=0&ui_infos=0&ui_stop=0",
+        name: "Crocodile",
+        desc: "A composite skeleton of an extinct crocodile about 50 million years old, discovered in shale layers of the Umm Himar Formation near Turabah, east of Taif in the Makkah region. This fossil is important evidence for the presence of ancient aquatic environments in the Al‑Hijaz region during the Eocene."
+    },
+    {
+        src: "https://sketchfab.com/models/b9bdbe49930345c99b01c94d3a28af0a/embed",
+        name: "RED Sea Reef",
+        desc: "Marine shells from the Red Sea coast in the Tabuk area, representing the remains of relatively recent marine organisms. These specimens date back to the Quaternary period, the most recent geological period extending to the present day. The shells reflect the evolution of coastal environments along the Red Sea and highlight the importance of the area for studying the recent history of marine sediments."
+    },
+    {
+        src: "https://sketchfab.com/models/6221de4509bc4479a7651c9124da9450/embed?ui_controls=0&ui_infos=0&ui_stop=0",
+        name: "Elephant",
+        desc: "A fossil elephant from the Shumaysi Formation near Makkah, dating to the Late Oligocene. These fossilized bones show that ancient elephants once lived in the Al‑Hijaz region during past geological ages. The specimen is an important indicator of the ancient faunal diversity of the Arabian Peninsula and of environmental changes through time."
+    },
+    {
+        src: "https://sketchfab.com/models/81126290ac5d40d889d8524e65ececbe/embed?ui_controls=0&ui_infos=0&ui_stop=0",
+        name: "Elephant Scapula",
+        desc: "Fossil shoulder bone (scapula) of the extinct elephant Elephas cf. recki from the Nafud Formation, dating to the Pleistocene. This specimen, discovered in northern Saudi Arabia, records the presence of large elephants in ancient savanna‑like environments of the Arabian Peninsula. It provides important evidence for climatic and ecological conditions that once supported big mammals in this region."
+    },
+    {
+        src: "https://sketchfab.com/models/4e26b81114884f0ab9e5e4fb111ee50d/embed?ui_controls=0&ui_infos=0&ui_stop=0",
+        name: "Gastropod",
+        desc: "Fossil gastropod (snail) from the Aruma Formation near Riyadh, dating to the Late Cretaceous. The specimen preserves the coiled shell that once protected the soft body of this marine mollusk. It provides evidence for Late Cretaceous marine environments that covered parts of central Saudi Arabia."
+    },
+    {
+        src: "https://sketchfab.com/models/530cbd64a45d4237b57dbec8a8161e7f/embed?ui_controls=0&ui_infos=0&ui_stop=0",
+        name: "Rudists",
+        desc: "Fossil shells of rudists, an extinct group of marine bivalves, from the Zalumah Formation along the Red Sea coast. These specimens date to the Cretaceous period, when rudist reefs dominated many tropical shallow seas. They provide important evidence for ancient warm, shallow marine environments that once bordered western Saudi Arabia."
+    },
+    {
+        src: "https://sketchfab.com/models/98571acf7fde413b8b6e1f0415c10109/embed",
+        name: "Bivalves",
+        desc: "Fossil bivalve shells from the Aruma Formation near Riyadh, dating to the Late Cretaceous. These shells preserve the form of burrowing clams that pumped water through siphons while living in soft seafloor mud. They indicate the presence of warm, shallow marine environments that once covered central Saudi Arabia."
+    },
+    {
+        src: "https://sketchfab.com/models/a614d7a2e2984c1b970b5fd2186ee5c4/embed?ui_controls=0&ui_infos=0&ui_stop=0",
+        name: "AMMONITE",
+        desc: "Ammonite fossil from the Hanifah Formation near Riyadh, dating to the Jurassic period. The specimen represents a coiled‑shell marine cephalopod that inhabited ancient Tethys Sea waters over central Arabia. It provides key evidence for widespread Jurassic marine environments in what is now central Saudi Arabia."
+    },
+    {
+        src: "https://sketchfab.com/models/6dc7b429a08f40efac7e6467abf3cb50/embed?ui_controls=0&ui_infos=0&ui_stop=0",
+        name: "Porite",
+        desc: "Fossil colonies of the coral Porites collected from the Gulf of Aqaba, with an age of more than 100,000 years (Eemian, Late Pleistocene). They provide important evidence for past sea‑level and climate changes in the Red Sea region."
+    },
+    {
+        src: "https://sketchfab.com/models/fa4b86616dab47c6bc08441c6320ef39/embed",
+        name: "Cruziana",
+        desc: "Cruziana trilobite trace fossils from the Saq Formation in the Tabuk area, dating to the Cambrian–Ordovician. These specimens preserve the movement and feeding trails left by trilobites on the ancient seafloor. They provide key evidence for the activity and behavior of early marine arthropods in northwestern Saudi Arabia."
+    },
+    {
+        src: "https://sketchfab.com/models/37003ed7589f495286b29b8d79d9436a/embed",
+        name: "Giant Tridacna",
+        desc: "Giant fossil shell of the clam Tridacna maxima from Farasan Island in the southern Red Sea. The shell is over 100,000 years old (Pleistocene) and is valuable for paleo‑environmental studies of sea‑level and climate changes. It records the development of uplifted Pleistocene coral‑reef and beach terraces along the Red Sea coast."
+    },
+    {
+        src: "https://sketchfab.com/models/3d36109ae3d6476da607a145bb600e4a/embed",
+        name: "Elphas cf. recki",
+        desc: "Fossil elephant bones from the Shumaysi Formation near Makkah, dating to the Late Oligocene. Shows that ancient elephants once lived in the Al‑Hijaz region, indicating faunal diversity and environmental changes in the Arabian Peninsula."
+    }
+];
+
+let index = 0;
+const viewer = document.getElementById("viewer");
+const modelName = document.getElementById("modelName");
+const modelDesc = document.getElementById("modelDesc");
+
+function loadModel(i) {
+    viewer.src = models[i].src;
+    modelName.textContent = models[i].name;
+    modelDesc.textContent = models[i].desc;
+}
+
+document.getElementById("next").onclick = () => {
+    index = (index + 1) % models.length;
+    loadModel(index);
+};
+
+document.getElementById("prev").onclick = () => {
+    index = (index - 1 + models.length) % models.length;
+    loadModel(index);
+};
+
+// تحميل أول مجسم
+loadModel(index);
+</script>
+
+</body>
+</html>
